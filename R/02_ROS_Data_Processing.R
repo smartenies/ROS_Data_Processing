@@ -102,12 +102,21 @@ for (i in 1:length(sample_ids)) {
     arrange(Position) %>% 
     mutate(injection_time = c(rep(first_time, 3), rep(second_time, 3)))
   
+  t1 <- filter(temp_df, injection_time == first_time) %>% 
+    summarize(mean_dtt = mean(dtt_conc))
+  
+  t2 <- filter(temp_df, injection_time == second_time) %>% 
+    summarize(mean_dtt = mean(dtt_conc))
+  
   temp_lm <- lm(dtt_conc ~ injection_time, data = temp_df)
   summary(temp_lm)
   
   temp_rate <- tidy(temp_lm) %>% 
     mutate(sample_id = sample_ids[i]) %>% 
-    filter(term == "injection_time")
+    filter(term == "injection_time") %>% 
+    select(-term) %>% 
+    mutate(mean_dtt_conc_t1 = t1$mean_dtt,
+           mean_dtt_conc_t2 = t2$mean_dtt)
   
   loss_rates <- bind_rows(loss_rates, temp_rate)
   
@@ -126,7 +135,7 @@ for (i in 1:length(sample_ids)) {
 }
 
 loss_rates_summary <- loss_rates %>% 
-  select(sample_id, estimate, std.error) %>% 
+  select(sample_id, estimate, std.error, mean_dtt_conc_t1, mean_dtt_conc_t2) %>% 
   rename(loss_rate = estimate,
          loss_rate_sd = std.error)
 
@@ -152,12 +161,21 @@ for (i in 1:length(blank_ids)) {
     temp_df2 <- filter(temp_df, Position %in% c(positions[j], positions[j+1])) %>% 
       mutate(injection_time = c(rep(first_time, 3), rep(second_time, 3)))
     
+    t1 <- filter(temp_df2, injection_time == first_time) %>% 
+      summarize(mean_dtt = mean(dtt_conc))
+    
+    t2 <- filter(temp_df2, injection_time == second_time) %>% 
+      summarize(mean_dtt = mean(dtt_conc))
+    
     temp_lm <- lm(dtt_conc ~ injection_time, data = temp_df2)
     summary(temp_lm)
     
     temp_rate <- tidy(temp_lm) %>% 
       mutate(sample_id = paste0(blank_ids[i], "_", i, "_", j)) %>% 
-      filter(term == "injection_time")
+      filter(term == "injection_time") %>% 
+      select(-term) %>% 
+      mutate(mean_dtt_conc_t1 = t1$mean_dtt,
+             mean_dtt_conc_t2 = t2$mean_dtt)
     
     blank_loss_rates <- bind_rows(blank_loss_rates, temp_rate)
     
@@ -182,15 +200,3 @@ loss_rates_summary <- bind_rows(loss_rates_summary, blank_loss_rates_summary)
 
 rates_name <- paste0(gsub(".xlsx", "", raw_name), " Loss Rates.csv")
 write_csv(loss_rates_summary, here::here("Data", rates_name))
-
-
-
-
-
-
-
-
-
-
-
-
