@@ -5,7 +5,7 @@
 #' Contact: Sheena.Martenies@colostate.edu
 #' 
 #' Description:
-#' This script calculates the TWA for each filter
+#' This script fits the calibration curve
 #' =============================================================================
 
 library(ggplot2)
@@ -75,3 +75,15 @@ write_csv(glance(curve_lm), here::here("Data/Calibration",
 
 tidy(curve_lm)
 glance(curve_lm)
+
+#' -----------------------------------------------------------------------------
+#' Plot the raw data and the regression curve
+#' -----------------------------------------------------------------------------
+
+ggplot(curve_data, aes(x = injection_name, y = Area)) +
+  geom_point(color = "blue") +
+  geom_smooth(method = lm, se = T, color = "red") +
+  xlab("DTT Concentraton (\u03bcm)") + ylab("Area (mAU*min)") +
+  simple_theme
+ggsave(here::here("Figs", "concentration_curve.jpeg"), device = "jpeg",
+       height = 5, width = 5, units = "in")
