@@ -1,7 +1,10 @@
 ## ROS Data Processing
 **Project:** ECHO LUR
+
 **Date created:** December 3, 2018
+
 **Author:** Sheena Martenies
+
 **Contact:** Sheena.Martenies@colostate.edu
 
 #### Project Overview
@@ -44,7 +47,9 @@ The following scripts are found in the R directory
     - The script also fits a linear model to each of the samples to estimate the
     DTT loss rate over time
     - The raw data are stored in the "Data/Raw_Data" directory
-    - Before each run, make sure you update the "raw_name" object (Line 58)
+    - Before each run, make sure you update the "raw_name" object (Line 58) and 
+    ensure that the curve_name (Line 43) indicates the right calibration curve for
+    the data run
     - The script will process samples and field/solution blanks and report results
     in a single .csv file
 

@@ -69,21 +69,26 @@ curve_lm <- lm(Area ~ injection_name, data = curve_data)
 summary(curve_lm)
 
 library(broom)
-write_csv(tidy(curve_lm), here::here("Data/Calibration", "cal_curve.csv"))
-write_csv(glance(curve_lm), here::here("Data/Calibration", 
-                                       "cal_curve_diagnostics.csv"))
-
 tidy(curve_lm)
 glance(curve_lm)
+
+curve_name2 <- paste0("Fitted ", gsub(".xlsx", ".csv", curve_name))
+curve_name3 <- paste0("Diagnostics ", gsub(".xlsx", ".csv", curve_name))
+
+
+write_csv(tidy(curve_lm), here::here("Data/Calibration", curve_name2))
+write_csv(glance(curve_lm), here::here("Data/Calibration", curve_name3))
 
 #' -----------------------------------------------------------------------------
 #' Plot the raw data and the regression curve
 #' -----------------------------------------------------------------------------
+
+plot_name <- gsub(".csv", ".jpeg", curve_name2)
 
 ggplot(curve_data, aes(x = injection_name, y = Area)) +
   geom_point(color = "blue") +
   geom_smooth(method = lm, se = T, color = "red") +
   xlab("DTT Concentraton (\u03bcm)") + ylab("Area (mAU*min)") +
   simple_theme
-ggsave(here::here("Figs", "concentration_curve.jpeg"), device = "jpeg",
+ggsave(here::here("Figs", plot_name), device = "jpeg",
        height = 5, width = 5, units = "in")

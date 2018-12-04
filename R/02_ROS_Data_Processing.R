@@ -40,13 +40,15 @@ options(scipen = 9999) #avoid scientific notation
 #' Make sure you've run 01_ROS_Calibration_Curve.R first
 #' -----------------------------------------------------------------------------
 
-cal_curve <- read_csv(here::here("Data/Calibration", "cal_curve.csv"))
+curve_name <- "DTT Calibration Curve_5 October 2018.xlsx"
+curve_name2 <- paste0("Fitted ", gsub(".xlsx", ".csv", curve_name))
+
+cal_curve <- read_csv(here::here("Data/Calibration", curve_name2))
 
 cal_intercept <- cal_curve$estimate[1]
 cal_slope <- cal_curve$estimate[nrow(cal_curve)]
  
 #' Additional values for the calculations
-adj_value <- 0.6
 first_time <- 0 # when was the first time point?
 second_time <- (36+(11/60)) # when was the second time point?
 
@@ -81,7 +83,7 @@ raw_data <- filter(raw_data, !injection_name == "WATER")
 
 raw_data <- raw_data %>% 
   mutate(Area = as.numeric(Area)) %>%  
-  mutate(dtt_conc = (Area - adj_value) / cal_slope)
+  mutate(dtt_conc = (Area - cal_intercept) / cal_slope)
 
 #' blanks in a separate data frame
 blank_data <- filter(raw_data, str_detect(injection_name, "blank"))
@@ -137,7 +139,9 @@ for (i in 1:length(sample_ids)) {
 loss_rates_summary <- loss_rates %>% 
   select(sample_id, estimate, std.error, mean_dtt_conc_t1, mean_dtt_conc_t2) %>% 
   rename(loss_rate = estimate,
-         loss_rate_sd = std.error)
+         loss_rate_sd = std.error) %>% 
+  mutate(cal_curve = gsub(".xlsx", "", curve_name),
+         raw_data = gsub(".xlsx", "", raw_name))
 
 #' -----------------------------------------------------------------------------
 #' Calculate loss rates for the blanks, too
@@ -189,7 +193,9 @@ for (i in 1:length(blank_ids)) {
 blank_loss_rates_summary <- blank_loss_rates %>% 
   select(sample_id, estimate, std.error) %>% 
   rename(loss_rate = estimate,
-         loss_rate_sd = std.error)
+         loss_rate_sd = std.error) %>% 
+  mutate(cal_curve = gsub(".xlsx", "", curve_name),
+         raw_data = gsub(".xlsx", "", raw_name))
 
 
 #' -----------------------------------------------------------------------------
