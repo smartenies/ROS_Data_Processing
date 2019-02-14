@@ -57,7 +57,8 @@ second_time <- (36+(11/60)) # when was the second time point?
 #' -----------------------------------------------------------------------------
 
 #' Change this depending on which sheet you're processing
-raw_name <-  "7 November 2018.xlsx"
+# raw_name <-  "7 November 2018.xlsx"
+raw_name <-  "11 February 2019.xlsx"
 
 raw_sheets <- excel_sheets(here::here("Data/Raw_Data", raw_name))
 raw_sheets <- raw_sheets[which(str_detect(raw_sheets, "Row "))]
@@ -76,6 +77,7 @@ for(i in 1:length(raw_sheets)) {
 
 #' drop water samples
 raw_data <- filter(raw_data, !injection_name == "WATER")
+glimpse(raw_data)
 
 #' -----------------------------------------------------------------------------
 #' Calculate DTT Concentrations
@@ -95,14 +97,23 @@ sample_data <- filter(raw_data, !str_detect(injection_name, "blank"))
 #' generate a plot for each sample
 #' -----------------------------------------------------------------------------
 
+if(!dir.exists(here::here("Figs/Sample_Plots"))) {
+  dir.create(here::here("Figs/Sample_Plots"))
+}
+
 sample_ids <- unique(sample_data$injection_name)
 
 loss_rates <- data.frame()
 
 for (i in 1:length(sample_ids)) {
   temp_df <- filter(sample_data, injection_name == sample_ids[i]) %>% 
-    arrange(Position) %>% 
-    mutate(injection_time = c(rep(first_time, 3), rep(second_time, 3)))
+    arrange(Position, as.numeric(injection))
+  
+  n_reps <- nrow(temp_df) / 2
+  
+  temp_df <- mutate(temp_df,
+                    injection_time = c(rep(first_time, n_reps), 
+                                       rep(second_time, n_reps)))
   
   t1 <- filter(temp_df, injection_time == first_time) %>% 
     summarize(mean_dtt = mean(dtt_conc))
@@ -130,16 +141,16 @@ for (i in 1:length(sample_ids)) {
     xlab("Sample Time (min)") + ylab("DTT Concentraton (\u03bcm)") +
     simple_theme
   plot_name <- paste0("Loss_Rate_", sample_ids[i], ".jpeg")
-  ggsave(here::here("Figs", plot_name), device = "jpeg",
+  ggsave(here::here("Figs/Sample_Plots", plot_name), device = "jpeg",
          height = 5, width = 5, units = "in")
   
   rm(temp_df, temp_lm, temp_rate)
 }
 
-loss_rates_summary <- loss_rates %>% 
+sample_rates_summary <- loss_rates %>% 
   select(sample_id, estimate, std.error, mean_dtt_conc_t1, mean_dtt_conc_t2) %>% 
-  rename(loss_rate = estimate,
-         loss_rate_sd = std.error) %>% 
+  rename(loss_rate_raw = estimate,
+         loss_rate_se_raw = std.error) %>% 
   mutate(cal_curve = gsub(".xlsx", "", curve_name),
          raw_data = gsub(".xlsx", "", raw_name))
 
@@ -156,14 +167,19 @@ blank_loss_rates <- data.frame()
 
 for (i in 1:length(blank_ids)) {
   temp_df <- filter(blank_data, injection_name == blank_ids[i]) %>% 
-    arrange(Position)
+    arrange(Position, as.numeric(injection))
   
   positions <- unique(temp_df$Position)
   n_blanks <- length(positions) / 2 
   
   for (j in 1:n_blanks) {
-    temp_df2 <- filter(temp_df, Position %in% c(positions[j], positions[j+1])) %>% 
-      mutate(injection_time = c(rep(first_time, 3), rep(second_time, 3)))
+    temp_df2 <- filter(temp_df, Position %in% c(positions[j], positions[j+1])) 
+    
+    n_reps2 <- nrow(temp_df2) / 2
+    
+    temp_df2 <- mutate(temp_df2,
+                       injection_time = c(rep(first_time, n_reps2), 
+                                          rep(second_time, n_reps2)))
     
     t1 <- filter(temp_df2, injection_time == first_time) %>% 
       summarize(mean_dtt = mean(dtt_conc))
@@ -175,7 +191,7 @@ for (i in 1:length(blank_ids)) {
     summary(temp_lm)
     
     temp_rate <- tidy(temp_lm) %>% 
-      mutate(sample_id = paste0(blank_ids[i], "_", i, "_", j)) %>% 
+      mutate(sample_id = paste0(blank_ids[i], "_", j)) %>% 
       filter(term == "injection_time") %>% 
       select(-term) %>% 
       mutate(mean_dtt_conc_t1 = t1$mean_dtt,
@@ -192,17 +208,35 @@ for (i in 1:length(blank_ids)) {
 
 blank_loss_rates_summary <- blank_loss_rates %>% 
   select(sample_id, estimate, std.error) %>% 
-  rename(loss_rate = estimate,
-         loss_rate_sd = std.error) %>% 
+  rename(loss_rate_raw = estimate,
+         loss_rate_se_raw = std.error) %>% 
   mutate(cal_curve = gsub(".xlsx", "", curve_name),
          raw_data = gsub(".xlsx", "", raw_name))
 
+#' -----------------------------------------------------------------------------
+#' Combine and blank correct the loss rates
+#' -----------------------------------------------------------------------------
+
+loss_rates_summary <- bind_rows(sample_rates_summary, blank_loss_rates_summary) %>% 
+  mutate(loss_rate_se_raw_sq = loss_rate_se_raw^2)
+
+#' Since I'm not sure which solution blank to use, for now I'll select the first one
+blank_correct_rate <- filter(loss_rates_summary, str_detect(sample_id, "solution blank")) %>% 
+  select(loss_rate_raw) %>% slice(1) %>% as.numeric
+blank_correct_se <- filter(loss_rates_summary, str_detect(sample_id, "solution blank")) %>% 
+  select(loss_rate_se_raw) %>% slice(1) %>% as.numeric
+blank_correct_se_sq <- blank_correct_se^2
+
+loss_rates_corrected <- filter(loss_rates_summary, !str_detect(sample_id, "blank")) %>% 
+  mutate(loss_rate_corrected = loss_rate_raw - blank_correct_rate,
+         loss_rate_se_corrected = sqrt(loss_rate_se_raw_sq + blank_correct_se_sq)) %>% 
+  select(sample_id, loss_rate_corrected, loss_rate_se_corrected)
+
+loss_rates_summary <- left_join(loss_rates_summary, loss_rates_corrected, 
+                                by = "sample_id")
 
 #' -----------------------------------------------------------------------------
 #' Save the data as a .csv
 #' -----------------------------------------------------------------------------
-
-loss_rates_summary <- bind_rows(loss_rates_summary, blank_loss_rates_summary)
-
 rates_name <- paste0(gsub(".xlsx", "", raw_name), " Loss Rates.csv")
-write_csv(loss_rates_summary, here::here("Data", rates_name))
+write_csv(loss_rates_summary, here::here("Results", rates_name))
