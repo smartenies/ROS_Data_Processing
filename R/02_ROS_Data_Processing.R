@@ -5,7 +5,8 @@
 #' Contact: Sheena.Martenies@colostate.edu
 #' 
 #' Description:
-#' This script processes the DTT assay data and estimates ROS concentrations
+#' This script processes the DTT assay data and estimates the DTT loss rate (umol/mL)
+#' in each sample
 #' =============================================================================
 
 library(ggplot2)
@@ -35,30 +36,40 @@ simple_theme <- theme(
 windowsFonts(Calibri=windowsFont("TT Calibri"))
 options(scipen = 9999) #avoid scientific notation
 
-#' -----------------------------------------------------------------------------
-#' Read in the calibration curve data
+#' =============================================================================
+#' Specify your user specific inputs here:
+#'     - Calibration curve name
+#'     - Raw data file name
+#'     - Injection times
+#'     
+#' This is the only place you need to make changes to the code unless you're 
+#' changing the analysis (e.g., samples are identified differently, moved on the 
+#' plates, etc.)
 #' Make sure you've run 01_ROS_Calibration_Curve.R first
+
+
+#' Name of the .xslx file with the calibration data
+curve_name <- "DTT Calibration Curve_5 October 2018.xlsx"
+
+#' Name of the .xlsx with the raw data
+#'      Make sure you've specified the correct calibration curve above
+#'      Change this depending on which sheet you're processing
+raw_name <-  "11 February 2019.xlsx"
+ 
+#' List the times for each injection (first time is probably 0)
+first_time <- 0 # when was the first time point?
+second_time <- (36+(11/60)) # when was the second time point?
+#' =============================================================================
+
+#' -----------------------------------------------------------------------------
+#' Read in the calibration curve and raw data from the instrument
 #' -----------------------------------------------------------------------------
 
-curve_name <- "DTT Calibration Curve_5 October 2018.xlsx"
 curve_name2 <- paste0("Fitted ", gsub(".xlsx", ".csv", curve_name))
-
 cal_curve <- read_csv(here::here("Data/Calibration", curve_name2))
 
 cal_intercept <- cal_curve$estimate[1]
 cal_slope <- cal_curve$estimate[nrow(cal_curve)]
- 
-#' Additional values for the calculations
-first_time <- 0 # when was the first time point?
-second_time <- (36+(11/60)) # when was the second time point?
-
-#' -----------------------------------------------------------------------------
-#' Read in the raw data from the instrument
-#' -----------------------------------------------------------------------------
-
-#' Change this depending on which sheet you're processing
-# raw_name <-  "7 November 2018.xlsx"
-raw_name <-  "11 February 2019.xlsx"
 
 raw_sheets <- excel_sheets(here::here("Data/Raw_Data", raw_name))
 raw_sheets <- raw_sheets[which(str_detect(raw_sheets, "Row "))]

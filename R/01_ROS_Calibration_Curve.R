@@ -34,6 +34,15 @@ simple_theme <- theme(
 windowsFonts(Calibri=windowsFont("TT Calibri"))
 options(scipen = 9999) #avoid scientific notation
 
+
+#' =============================================================================
+#' Specify your user specific inputs here:
+#'     - Calibration curve name
+
+#' Name of the .xslx file with the calibration data
+curve_name <- "DTT Calibration Curve_5 October 2018.xlsx"
+#' =============================================================================
+
 #' -----------------------------------------------------------------------------
 #' Read in the calibration curve data
 #' -----------------------------------------------------------------------------
