@@ -1,4 +1,6 @@
 ## ROS Data Processing
+Scripts to fit calibration curves and calculate the DTT loss rates for the ROS UV-Vs analysis 
+
 **Project:** ECHO LUR
 
 **Date created:** December 3, 2018
